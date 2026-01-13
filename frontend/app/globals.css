@@ -1,0 +1,42 @@
+@import "tailwindcss";
+
+:root {
+  --background: #030712; /* gray-950 */
+  --foreground: #f8fafc; /* slate-50 */
+  --primary: #06b6d4; /* cyan-500 */
+  --primary-glow: rgba(6, 182, 212, 0.5);
+  --secondary: #8b5cf6; /* violet-500 */
+  --accent: #ec4899; /* pink-500 */
+  --surface: #111827; /* gray-900 */
+  --surface-highlight: #1f2937; /* gray-800 */
+  --border: #374151; /* gray-700 */
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), sans-serif;
+  overflow-x: hidden;
+}
+
+@layer utilities {
+  .glass-panel {
+    @apply bg-gray-900/60 backdrop-blur-xl border border-white/10 shadow-xl;
+  }
+  
+  .neon-text {
+    text-shadow: 0 0 10px var(--primary-glow);
+  }
+
+  .neon-border {
+    box-shadow: 0 0 10px var(--primary-glow);
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+      display: none;
+  }
+  .scrollbar-hide {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+  }
+}
