@@ -42,7 +42,7 @@ func main() {
 	router.GET("/contest/status", handleGetRegistrationStatus)
 	router.GET("/contest/:id/registrations", handleGetContestRegistrations)
 	router.GET("/leaderboard", handleGetLeaderboard)
-	router.GET("/contest/:id/leaderboard", handleGetContestLeaderboard)
+	// router.GET("/contest/:id/leaderboard", handleGetContestLeaderboard)
 	router.GET("/problem/:id/leaderboard", handleGetProblemLeaderboard)
 
 	router.Run(":8080")

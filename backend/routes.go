@@ -34,12 +34,12 @@ func handleRun(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	message, err := runInContainer(run.Username)
 	if err != nil {
 		// Include the stderr (message) so user can see the Python traceback
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
+			"error":  err.Error(),
 			"output": message,
 		})
 		return
@@ -66,12 +66,12 @@ func handleRun(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusAccepted, gin.H{
-		"username": run.Username,
-		"message": message,
-		"output": output,
-		"status": status,
+		"username":        run.Username,
+		"message":         message,
+		"output":          output,
+		"status":          status,
 		"expected_output": expected,
-		"actual_output": actual,
+		"actual_output":   actual,
 		"test_case_input": input,
 	})
 }
@@ -85,21 +85,21 @@ func handleGetLeaderboard(c *gin.Context) {
 	c.JSON(http.StatusOK, leaderboard)
 }
 
-func handleGetContestLeaderboard(c *gin.Context) {
-	contestIDStr := c.Param("id")
-	contestID, err := strconv.Atoi(contestIDStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid contest ID"})
-		return
-	}
+// func handleGetContestLeaderboard(c *gin.Context) {
+// 	contestIDStr := c.Param("id")
+// 	contestID, err := strconv.Atoi(contestIDStr)
+// 	if err != nil {
+// 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid contest ID"})
+// 		return
+// 	}
 
-	leaderboard, err := GetContestLeaderboard(uint(contestID))
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, leaderboard)
-}
+// 	leaderboard, err := GetContestLeaderboard(uint(contestID))
+// 	if err != nil {
+// 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+// 		return
+// 	}
+// 	c.JSON(http.StatusOK, leaderboard)
+// }
 
 func handleGetProblemLeaderboard(c *gin.Context) {
 	problemIDStr := c.Param("id")
@@ -197,17 +197,17 @@ func handleGetContests(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	var result []map[string]interface{}
 	for _, contest := range contests {
 		count, _ := GetContestRegistrationsCount(contest.ID)
 		result = append(result, map[string]interface{}{
-			"id":          contest.ID,
-			"title":       contest.Title,
-			"description": contest.Description,
-			"start_time":  contest.StartTime,
-			"end_time":    contest.EndTime,
-			"problems":    contest.Problems,
+			"id":           contest.ID,
+			"title":        contest.Title,
+			"description":  contest.Description,
+			"start_time":   contest.StartTime,
+			"end_time":     contest.EndTime,
+			"problems":     contest.Problems,
 			"participants": count,
 		})
 	}
@@ -240,17 +240,17 @@ func handleGetContest(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Contest not found"})
 		return
 	}
-	
+
 	count, _ := GetContestRegistrationsCount(contest.ID)
-	
+
 	c.JSON(http.StatusOK, gin.H{
-		"id":          contest.ID,
-		"title":       contest.Title,
-		"description": contest.Description,
-		"start_time":  contest.StartTime,
-		"end_time":    contest.EndTime,
-		"problems":    contest.Problems, // Gorm preloads this
-		"participants": count,
+		"id":                  contest.ID,
+		"title":               contest.Title,
+		"description":         contest.Description,
+		"start_time":          contest.StartTime,
+		"end_time":            contest.EndTime,
+		"problems":            contest.Problems, // Gorm preloads this
+		"participants":        count,
 		"registration_config": contest.RegistrationConfig,
 	})
 }
@@ -267,10 +267,10 @@ func handleGetProblem(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Problem not found"})
 		return
 	}
-	
+
 	// Hide hidden runner code from public API
 	problem.RunnerCode = ""
-	
+
 	c.JSON(http.StatusOK, problem)
 }
 
@@ -329,7 +329,7 @@ func handleRegisterContest(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	// Check if already registered
 	registered, err := IsUserRegistered(body.UserID, body.ContestID)
 	if err != nil {
@@ -358,7 +358,7 @@ func handleGetRegistrationStatus(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	c.JSON(http.StatusOK, gin.H{"registered": registered})
 }
 

@@ -12,7 +12,7 @@ import (
 var DB *gorm.DB
 
 func InitDatabase() {
-		database, err := gorm.Open(
+	database, err := gorm.Open(
 		&sqlite.Dialector{
 			DriverName: "sqlite",
 			DSN:        "users.db",
@@ -115,10 +115,10 @@ func DeleteProblem(id uint) error {
 
 func RegisterForContest(userID string, contestID uint, extraInfo string) error {
 	registration := Registration{
-		UserID:    userID,
-		ContestID: contestID,
+		UserID:       userID,
+		ContestID:    contestID,
 		RegisteredAt: time.Now(),
-		ExtraInfo: extraInfo,
+		ExtraInfo:    extraInfo,
 	}
 	return DB.Create(&registration).Error
 }
@@ -169,14 +169,14 @@ func GetLeaderboard() ([]LeaderboardEntry, error) {
 	return entries, err
 }
 
-		Scan(&entries).Error
-	return entries, err
-}
+// func Scan(&entries).Error
+// 	return entries, err
+// }
 
 type ProblemLeaderboardEntry struct {
 	UserID    string    `json:"username"`
 	CreatedAt time.Time `json:"created_at"`
-    Status    string    `json:"status"`
+	Status    string    `json:"status"`
 }
 
 func GetProblemLeaderboard(problemID uint) ([]ProblemLeaderboardEntry, error) {
