@@ -2,26 +2,58 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
-import { Terminal, Code2 } from "lucide-react";
+import { Terminal, Code2, Lock } from "lucide-react";
+import { verifyAdmin } from "./actions";
 
 export default function LoginPage() {
   const router = useRouter();
   const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    // Simulate login delay for effect
-    setTimeout(() => {
+    setError(null);
+
+    try {
+      // 1. Check Env-based Admin Auth
+      const isAdmin = await verifyAdmin(username, password);
+      if (isAdmin) {
+        localStorage.setItem("codejudge_user", "admin");
+        router.push("/competitions");
+        return;
+      }
+
+      // 2. Check Backend User Auth
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
+      const res = await fetch(`${backendUrl}/user/exists`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
+
+      if (!res.ok) throw new Error("Connection failed");
+
+      const data = await res.json();
+      if (!data.exists) {
+        throw new Error("Invalid identity credentials");
+      }
+
       // Store username in localStorage for "session"
       localStorage.setItem("codejudge_user", username);
       router.push("/competitions");
-    }, 1000);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -50,17 +82,39 @@ export default function LoginPage() {
           </div>
 
           <form onSubmit={handleLogin} className="space-y-6">
-            <div className="space-y-2">
-              <label className="text-sm text-gray-400 ml-1">Identity</label>
-              <div className="relative">
-                <Terminal className="absolute left-3 top-3.5 w-5 h-5 text-gray-500" />
-                <Input
-                  placeholder="username"
-                  className="pl-10"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  required
-                />
+            {error && (
+              <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm p-3 rounded-lg text-center">
+                {error}
+              </div>
+            )}
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm text-gray-400 ml-1">Identity</label>
+                <div className="relative">
+                  <Terminal className="absolute left-3 top-3.5 w-5 h-5 text-gray-500" />
+                  <Input
+                    placeholder="username"
+                    className="pl-10"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm text-gray-400 ml-1">Password</label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-3.5 w-5 h-5 text-gray-500" />
+                  <Input
+                    type="password"
+                    placeholder="••••••••"
+                    className="pl-10"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                </div>
               </div>
             </div>
 
@@ -74,8 +128,15 @@ export default function LoginPage() {
             </Button>
           </form>
 
+          <div className="mt-6 text-center text-sm">
+             <Link href="/register" className="text-gray-500 hover:text-cyan-400 transition-colors">
+               New here? Create an identity
+             </Link>
+          </div>
+
           <div className="mt-6 text-center text-sm text-gray-500">
             <p>System v2.0.4 // Ready</p>
+            <p className="text-xs mt-2 text-gray-600">Hint: Use 'admin' for elevated privileges.</p>
           </div>
         </Card>
       </motion.div>

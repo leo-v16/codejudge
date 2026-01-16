@@ -61,11 +61,3 @@ for line in sys.stdin:
         pass`,
   },
 ];
-
-export const leaderboard = [
-  { rank: 1, username: "neocodes", score: 100, time: "0:45" },
-  { rank: 2, username: "cyber_ninja", score: 95, time: "0:50" },
-  { rank: 3, username: "algo_master", score: 90, time: "1:05" },
-  { rank: 4, username: "glitch_runner", score: 85, time: "1:10" },
-  { rank: 5, username: "null_pointer", score: 80, time: "1:20" },
-];

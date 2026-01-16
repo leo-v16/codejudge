@@ -1,15 +1,69 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { competitions, problems } from "@/lib/data";
+// import { competitions, problems } from "@/lib/data"; // Removed static data
 import { Trophy, Timer, Users, ArrowRight, Code } from "lucide-react";
 
 export default function CompetitionsPage() {
   const router = useRouter();
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [contests, setContests] = useState<any[]>([]);
+  const [problems, setProblems] = useState<any[]>([]);
+  
+  useEffect(() => {
+    const user = localStorage.getItem("codejudge_user");
+    setIsAdmin(user === "admin");
+    
+    fetchContests();
+    fetchProblems();
+  }, []);
+
+  const fetchContests = async () => {
+    try {
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
+        const res = await fetch(`${backendUrl}/contests`);
+        if (res.ok) {
+            const data = await res.json();
+            if (Array.isArray(data)) {
+                const formatted = data.map((c: any) => ({
+                    id: c.id,
+                    title: c.title,
+                    description: c.description,
+                    startTime: new Date(c.start_time).toLocaleString(),
+                    status: new Date() < new Date(c.start_time) ? 'upcoming' : new Date() > new Date(c.end_time) ? 'ended' : 'active',
+                    participants: c.participants || 0
+                }));
+                setContests(formatted);
+            } else {
+                setContests([]);
+            }
+        }
+    } catch (err) {
+        console.error("Failed to fetch contests", err);
+    }
+  };
+
+  const fetchProblems = async () => {
+    try {
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
+        const res = await fetch(`${backendUrl}/problems/practice`);
+        if (res.ok) {
+            const data = await res.json();
+            if (Array.isArray(data)) {
+                setProblems(data);
+            } else {
+                setProblems([]);
+            }
+        }
+    } catch (err) {
+        console.error("Failed to fetch problems", err);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#030712] p-8">
@@ -19,9 +73,11 @@ export default function CompetitionsPage() {
           <p className="text-gray-400">Welcome back, Runner.</p>
         </div>
         <div className="flex gap-4">
-            <Button variant="outline" onClick={() => router.push("/admin")}>
-                Admin Panel
-            </Button>
+            {isAdmin && (
+                <Button variant="outline" onClick={() => router.push("/admin")}>
+                    Admin Panel
+                </Button>
+            )}
             <Button variant="ghost" onClick={() => router.push("/")} className="text-red-400 hover:text-red-300">
                 Logout
             </Button>
@@ -37,12 +93,14 @@ export default function CompetitionsPage() {
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {competitions.map((comp, idx) => (
+            {contests.length === 0 && <p className="text-gray-500">No active protocols detected.</p>}
+            {contests.map((comp, idx) => (
               <motion.div
                 key={comp.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.1 }}
+                onClick={() => router.push(`/contest/${comp.id}`)}
               >
                 <Card hoverEffect className="h-full flex flex-col justify-between group cursor-pointer relative overflow-hidden">
                   <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-cyan-500 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -52,7 +110,7 @@ export default function CompetitionsPage() {
                       <Badge variant={comp.status === 'active' ? 'success' : comp.status === 'upcoming' ? 'warning' : 'default'}>
                         {comp.status.toUpperCase()}
                       </Badge>
-                      <span className="text-xs text-gray-500 font-mono">{comp.id}</span>
+                      <span className="text-xs text-gray-500 font-mono">#{comp.id}</span>
                     </div>
                     
                     <h3 className="text-xl font-bold text-white mb-2 group-hover:text-cyan-400 transition-colors">
@@ -88,6 +146,7 @@ export default function CompetitionsPage() {
           </div>
 
           <div className="space-y-4">
+            {problems.length === 0 && <p className="text-gray-500">No training modules available.</p>}
             {problems.map((problem, idx) => (
               <motion.div
                 key={problem.id}
@@ -105,7 +164,6 @@ export default function CompetitionsPage() {
                       </h4>
                       <div className="flex gap-4 mt-1 text-xs text-gray-500">
                         <span>{problem.difficulty}</span>
-                        <span>Acceptance: {problem.acceptance}</span>
                       </div>
                     </div>
                   </div>

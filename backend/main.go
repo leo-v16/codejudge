@@ -9,9 +9,9 @@ import (
 )
 
 func main() {
+	InitDatabase()
 	router := gin.Default()
 
-	// CORS configuration
 	router.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:3000"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"},
@@ -23,6 +23,27 @@ func main() {
 
 	router.GET("/", sayHello)
 	router.POST("/run", handleRun)
+	router.POST("/user/create", handleCreateUser)
+	router.POST("/user/exists", handleUserExists)
+
+	router.POST("/contest", handleCreateContest)
+	router.PUT("/contest", handleUpdateContest)
+	router.DELETE("/contest/:id", handleDeleteContest)
+	router.GET("/contests", handleGetContests)
+	router.GET("/contest/:id", handleGetContest)
+	router.POST("/problem", handleCreateProblem)
+	router.GET("/problem/:id", handleGetProblem)
+	router.GET("/problems/practice", handleGetPracticeProblems)
+	router.GET("/problems", handleGetAllProblems)
+	router.PUT("/problem", handleUpdateProblem)
+	router.DELETE("/problem/:id", handleDeleteProblem)
+
+	router.POST("/contest/register", handleRegisterContest)
+	router.GET("/contest/status", handleGetRegistrationStatus)
+	router.GET("/contest/:id/registrations", handleGetContestRegistrations)
+	router.GET("/leaderboard", handleGetLeaderboard)
+	router.GET("/contest/:id/leaderboard", handleGetContestLeaderboard)
+	router.GET("/problem/:id/leaderboard", handleGetProblemLeaderboard)
 
 	router.Run(":8080")
 }
