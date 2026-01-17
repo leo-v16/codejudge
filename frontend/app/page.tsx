@@ -32,7 +32,7 @@ export default function LoginPage() {
       }
 
       // 2. Check Backend User Auth
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "/api";
       const res = await fetch(`${backendUrl}/user/exists`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -130,7 +130,7 @@ export default function LoginPage() {
 
           <div className="mt-6 text-center text-sm">
              <Link href="/register" className="text-gray-500 hover:text-cyan-400 transition-colors">
-               New here? Create an identity
+               New here? Register
              </Link>
           </div>
 

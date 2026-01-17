@@ -83,7 +83,7 @@ func runInContainer(username string) (string, error) {
 		"-v", workDir+":/code",
 		"-w", "/code",
 		"python:3.11",
-		"sh", "-c", "python solution.py < input.txt > output.txt",
+		"sh", "-c", "timeout 2s python solution.py < input.txt > output.txt",
 	)
 	cmd.Dir = workDir
 
@@ -94,6 +94,9 @@ func runInContainer(username string) (string, error) {
 	cmd.Stdout = &out
 
 	if err := cmd.Run(); err != nil {
+		if strings.Contains(err.Error(), "124") {
+			return "Time Limit Exceeded", fmt.Errorf("Time Limit Exceeded")
+		}
 		return stderr.String(), err
 	}
 	return out.String(), nil

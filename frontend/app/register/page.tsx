@@ -25,7 +25,7 @@ export default function RegisterPage() {
     setError(null);
 
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "/api";
       
       // Check if user exists
       const existsRes = await fetch(`${backendUrl}/user/exists`, {

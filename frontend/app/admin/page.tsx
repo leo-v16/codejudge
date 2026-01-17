@@ -5,12 +5,13 @@ import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
 import { ChevronLeft, Save, Plus, Calendar, Trophy, Users, Trash2, PlusCircle } from "lucide-react";
 
 export default function AdminPage() {
   const router = useRouter();
   const [authorized, setAuthorized] = useState(false);
-  const [activeTab, setActiveTab] = useState<"problem" | "contest">("problem");
+  const [activeTab, setActiveTab] = useState<"problem" | "contest" | "users">("problem");
   const [editingProblemId, setEditingProblemId] = useState<number | null>(null);
 
   // Problem Form State
@@ -28,8 +29,8 @@ export default function AdminPage() {
 
   const [signature, setSignature] = useState({
       functionName: "twoSum",
-      parameters: [{name: "nums", type: "List[int]"}, {name: "target", type: "int"}],
-      returnType: "List[int]"
+      parameters: [{name: "nums", type: "list[int]"}, {name: "target", type: "int"}],
+      returnType: "list[int]"
   });
 
   // Contest Form State
@@ -44,6 +45,7 @@ export default function AdminPage() {
 
   const [contests, setContests] = useState<any[]>([]);
   const [problems, setProblems] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
   const [registrations, setRegistrations] = useState<any[]>([]);
   const [viewingRegistrationsContestId, setViewingRegistrationsContestId] = useState<number | null>(null);
   const [editingContestId, setEditingContestId] = useState<number | null>(null);
@@ -57,12 +59,26 @@ export default function AdminPage() {
       setAuthorized(true);
       fetchContests();
       fetchProblems();
+      fetchUsers();
     }
   }, [router]);
 
+  const fetchUsers = async () => {
+    try {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "/api";
+      const res = await fetch(`${backendUrl}/users`);
+      if (res.ok) {
+        const data = await res.json();
+        setUsers(Array.isArray(data) ? data : []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch users", err);
+    }
+  };
+
   const fetchContests = async () => {
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "/api";
       const res = await fetch(`${backendUrl}/contests`);
       if (res.ok) {
         const data = await res.json();
@@ -75,7 +91,7 @@ export default function AdminPage() {
 
   const fetchRegistrations = async (contestId: number) => {
       try {
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "/api";
         const res = await fetch(`${backendUrl}/contest/${contestId}/registrations`);
         if (res.ok) {
             const data = await res.json();
@@ -89,7 +105,7 @@ export default function AdminPage() {
 
   const fetchProblems = async () => {
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "/api";
       const res = await fetch(`${backendUrl}/problems`);
       if (res.ok) {
         const data = await res.json();
@@ -129,7 +145,7 @@ export default function AdminPage() {
   const handleProblemSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "/api";
       const method = editingProblemId ? "PUT" : "POST";
       
       const finalSignatureJson = JSON.stringify({
@@ -181,7 +197,7 @@ export default function AdminPage() {
   const handleDeleteProblem = async (id: number) => {
       if (!confirm("Are you sure you want to delete this problem?")) return;
       try {
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "/api";
         const res = await fetch(`${backendUrl}/problem/${id}`, {
             method: "DELETE",
         });
@@ -213,7 +229,7 @@ export default function AdminPage() {
   const handleDeleteContest = async (id: number) => {
       if (!confirm("Are you sure you want to delete this contest?")) return;
       try {
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "/api";
         const res = await fetch(`${backendUrl}/contest/${id}`, {
             method: "DELETE",
         });
@@ -266,7 +282,7 @@ export default function AdminPage() {
   const handleContestSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "/api";
       const method = editingContestId ? "PUT" : "POST";
       const body = {
           ...contestData,
@@ -322,11 +338,56 @@ export default function AdminPage() {
             >
                 <Plus className="w-4 h-4 mr-2" /> Problems
             </Button>
+            <Button 
+                variant={activeTab === "users" ? "primary" : "outline"} 
+                onClick={() => setActiveTab("users")}
+                size="sm"
+            >
+                <Users className="w-4 h-4 mr-2" /> Users
+            </Button>
         </div>
       </header>
 
       <main className="max-w-4xl mx-auto">
-        {activeTab === "contest" ? (
+        {activeTab === "users" && (
+            <Card className="border-cyan-900/30">
+                <div className="flex items-center justify-between mb-6 border-b border-gray-800 pb-4">
+                    <div className="flex items-center gap-2">
+                        <Users className="text-cyan-500" />
+                        <h2 className="text-xl font-semibold text-white">Registered Identities</h2>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={fetchUsers}>
+                        Refresh List
+                    </Button>
+                </div>
+                <div className="divide-y divide-gray-800">
+                    {users.map(u => (
+                        <div key={u.Username} className="py-4 flex items-center justify-between">
+                            <div>
+                                <p className="text-white font-medium">{u.Username}</p>
+                                <p className="text-gray-500 text-sm">{u.Email || "No email provided"}</p>
+                            </div>
+                            <div className="flex gap-2">
+                                {u.registered_contests && u.registered_contests.length > 0 ? (
+                                    u.registered_contests.map((cid: number) => (
+                                        <Badge key={cid} variant="default" className="text-xs bg-cyan-900/30 text-cyan-400 border-cyan-800">
+                                            Contest #{cid}
+                                        </Badge>
+                                    ))
+                                ) : (
+                                    <span className="text-gray-600 text-xs">No active registrations</span>
+                                )}
+                            </div>
+                        </div>
+                    ))}
+                    {users.length === 0 && (
+                        <p className="text-center py-8 text-gray-500">No identities found in the database.</p>
+                    )}
+                </div>
+            </Card>
+        )}
+
+        {activeTab !== "users" && (activeTab === "contest" ? (
              <div className="space-y-8">
                  {viewingRegistrationsContestId ? (
                      <Card className="border-cyan-900/30">
@@ -612,7 +673,7 @@ export default function AdminPage() {
                                             const newTemplate = `class Solution:\n    def ${signature.functionName}(self, ${params}) -> ${newType}:\n        pass`;
                                             setProblemData(prev => ({...prev, template: newTemplate}));
                                         }}
-                                        placeholder="List[int]"
+                                        placeholder="list[int]"
                                     />
                                 </div>
                             </div>
@@ -646,7 +707,7 @@ export default function AdminPage() {
                                             }}
                                         />
                                         <Input 
-                                            placeholder="Type (e.g. List[int])" 
+                                            placeholder="Type (e.g. list[int])" 
                                             value={param.type} 
                                             onChange={(e) => {
                                                 const newParams = [...signature.parameters];
@@ -766,7 +827,7 @@ export default function AdminPage() {
                     </div>
                 </Card>
             </div>
-        )}
+        ))}
       </main>
     </div>
   );

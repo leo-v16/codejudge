@@ -32,6 +32,12 @@ func CreateUser(user User) error {
 	return result.Error
 }
 
+func GetAllUsers() ([]User, error) {
+	var users []User
+	err := DB.Find(&users).Error
+	return users, err
+}
+
 func UserExists(username string) (bool, error) {
 	var user User
 	result := DB.Where("username = ?", username).First(&user)
@@ -145,6 +151,12 @@ func GetContestRegistrationsCount(contestID uint) (int64, error) {
 func GetContestRegistrations(contestID uint) ([]Registration, error) {
 	var registrations []Registration
 	err := DB.Where("contest_id = ?", contestID).Find(&registrations).Error
+	return registrations, err
+}
+
+func GetUserRegistrations(userID string) ([]Registration, error) {
+	var registrations []Registration
+	err := DB.Where("user_id = ?", userID).Find(&registrations).Error
 	return registrations, err
 }
 

@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -144,6 +145,7 @@ func handleRun(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	defer cleanRunDirectory(run.Username)
 
 	message, err := runInContainer(run.Username)
 	if err != nil {
@@ -289,7 +291,12 @@ func handleCreateUser(c *gin.Context) {
 		return
 	}
 	if err := CreateUser(user); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errMsg := err.Error()
+		if strings.Contains(errMsg, "UNIQUE constraint failed") {
+			c.JSON(http.StatusConflict, gin.H{"error": "Identity already claimed (Username taken)"})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": errMsg})
+		}
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{"message": "User created successfully"})
@@ -305,13 +312,21 @@ func handleUserExists(c *gin.Context) {
 		return
 	}
 
-	exists, err := VerifyUser(body.Username, body.Password)
+	var exists bool
+	var err error
+
+	if body.Password == "" {
+		// Just checking if identity exists (e.g., during registration)
+		exists, err = UserExists(body.Username)
+	} else {
+		// Verifying credentials (e.g., during login)
+		exists, err = VerifyUser(body.Username, body.Password)
+	}
+
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-
-	println("Verifying user:", body.Username, "Password provided:", body.Password, "Result:", exists)
 
 	c.JSON(http.StatusOK, gin.H{"exists": exists})
 }
@@ -455,6 +470,36 @@ func handleGetAllProblems(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, problems)
+}
+
+func handleGetAllUsers(c *gin.Context) {
+	users, err := GetAllUsers()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	type UserResponse struct {
+		Username      string `json:"Username"`
+		Email         string `json:"Email"`
+		RegisteredContests []uint `json:"registered_contests"`
+	}
+
+	var response []UserResponse
+	for _, u := range users {
+		regs, _ := GetUserRegistrations(u.Username)
+		var contestIDs []uint
+		for _, r := range regs {
+			contestIDs = append(contestIDs, r.ContestID)
+		}
+		response = append(response, UserResponse{
+			Username:           u.Username,
+			Email:              u.Email,
+			RegisteredContests: contestIDs,
+		})
+	}
+
+	c.JSON(http.StatusOK, response)
 }
 
 func handleUpdateProblem(c *gin.Context) {

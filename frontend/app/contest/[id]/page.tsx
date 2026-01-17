@@ -29,7 +29,7 @@ export default function ContestPage() {
 
     const fetchContest = async () => {
       try {
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "/api";
         const res = await fetch(`${backendUrl}/contest/${id}`);
         if (res.ok) {
           const data = await res.json();
@@ -59,7 +59,7 @@ export default function ContestPage() {
 
     const fetchLeaderboard = async () => {
         try {
-            const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
+            const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "/api";
             const res = await fetch(`${backendUrl}/contest/${id}/leaderboard`);
             if (res.ok) {
                 const data = await res.json();
@@ -73,7 +73,7 @@ export default function ContestPage() {
     const checkRegistration = async () => {
         if (!user || !id) return;
         try {
-            const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
+            const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "/api";
             const res = await fetch(`${backendUrl}/contest/status?user_id=${user}&contest_id=${id}`);
             if (res.ok) {
                 const data = await res.json();
@@ -89,7 +89,7 @@ export default function ContestPage() {
     fetchLeaderboard();
 
     // Live Leaderboard Updates
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "/api";
     const eventSource = new EventSource(`${backendUrl}/contest/${id}/leaderboard/stream`);
     
     eventSource.onmessage = (event) => {
@@ -138,7 +138,7 @@ export default function ContestPage() {
     }
 
     try {
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "/api";
         const res = await fetch(`${backendUrl}/contest/register`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },

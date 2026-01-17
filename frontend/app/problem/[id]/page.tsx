@@ -31,7 +31,7 @@ export default function ProblemPage() {
 
     const fetchProblem = async () => {
       try {
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "/api";
         const res = await fetch(`${backendUrl}/problem/${id}`);
         if (res.ok) {
           const data = await res.json();
@@ -54,7 +54,7 @@ export default function ProblemPage() {
   useEffect(() => {
     if (!problem?.contest_id) return;
 
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "/api";
     const eventSource = new EventSource(`${backendUrl}/contest/${problem.contest_id}/leaderboard/stream`);
     
     eventSource.onmessage = (event) => {
@@ -82,7 +82,7 @@ export default function ProblemPage() {
 
   const fetchLeaderboard = async () => {
     try {
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "/api";
         const res = await fetch(`${backendUrl}/problem/${id}/leaderboard`);
         if (res.ok) {
             const data = await res.json();
@@ -101,7 +101,7 @@ export default function ProblemPage() {
     const currentUsername = username || "anonymous";
 
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "/api";
       const res = await fetch(`${backendUrl}/run`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

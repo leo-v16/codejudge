@@ -14,7 +14,7 @@ func main() {
 	router := gin.Default()
 
 	router.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:3000"},
+		AllowAllOrigins:  true,
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept"},
 		ExposeHeaders:    []string{"Content-Length"},
@@ -36,6 +36,7 @@ func main() {
 	router.GET("/problem/:id", handleGetProblem)
 	router.GET("/problems/practice", handleGetPracticeProblems)
 	router.GET("/problems", handleGetAllProblems)
+	router.GET("/users", handleGetAllUsers)
 	router.PUT("/problem", handleUpdateProblem)
 	router.DELETE("/problem/:id", handleDeleteProblem)
 

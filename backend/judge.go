@@ -68,7 +68,7 @@ harnessCode := strings.Replace(string(harnessTemplate), "{METHOD_NAME}", signatu
 		"-v", absWorkDir+":/code",
 		"-w", "/code",
 		"python:3.11",
-		"python", "runner.py",
+		"sh", "-c", "timeout 5s python runner.py",
 	) 
 
 	var stdout, stderr bytes.Buffer
@@ -76,6 +76,9 @@ harnessCode := strings.Replace(string(harnessTemplate), "{METHOD_NAME}", signatu
 	cmd.Stderr = &stderr
 
 	if err := cmd.Run(); err != nil {
+		if strings.Contains(err.Error(), "124") {
+			return nil, fmt.Errorf("Time Limit Exceeded")
+		}
 		return nil, fmt.Errorf("execution error: %v, stderr: %s", err, stderr.String())
 	}
 
