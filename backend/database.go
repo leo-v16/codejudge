@@ -1,6 +1,7 @@
 package main
 
 import (
+	"sort"
 	"time"
 
 	"gorm.io/driver/sqlite"
@@ -167,6 +168,60 @@ func GetLeaderboard() ([]LeaderboardEntry, error) {
 		Order("score desc").
 		Scan(&entries).Error
 	return entries, err
+}
+
+func GetContestLeaderboard(contestID uint) ([]LeaderboardEntry, error) {
+	// 1. Get all registered users
+	var registrations []Registration
+	if err := DB.Where("contest_id = ?", contestID).Find(&registrations).Error; err != nil {
+		return nil, err
+	}
+	println("DEBUG: Found registrations:", len(registrations), "for contest:", contestID)
+
+	// Map to track scores. Initialize with 0.
+	scores := make(map[string]int)
+	for _, reg := range registrations {
+		scores[reg.UserID] = 0
+	}
+
+	// 2. Get points for solved problems
+	type UserProblemPoints struct {
+		UserID string
+		Points int
+	}
+	var solved []UserProblemPoints
+
+	// Group by user and problem to ensure we don't double count points for multiple submissions
+	err := DB.Table("submissions").
+		Select("submissions.user_id, problems.points").
+		Joins("JOIN problems ON problems.id = submissions.problem_id").
+		Where("submissions.status = ? AND problems.contest_id = ?", "Passed", contestID).
+		Group("submissions.user_id, submissions.problem_id"). 
+		Scan(&solved).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	// 3. Aggregate
+	for _, s := range solved {
+		if _, ok := scores[s.UserID]; ok {
+			scores[s.UserID] += s.Points
+		}
+	}
+
+	// 4. Convert to slice
+	var leaderboard []LeaderboardEntry
+	for user, score := range scores {
+		leaderboard = append(leaderboard, LeaderboardEntry{UserID: user, Score: score})
+	}
+
+	// 5. Sort (Desc score)
+	sort.Slice(leaderboard, func(i, j int) bool {
+		return leaderboard[i].Score > leaderboard[j].Score
+	})
+
+	return leaderboard, nil
 }
 
 // func Scan(&entries).Error

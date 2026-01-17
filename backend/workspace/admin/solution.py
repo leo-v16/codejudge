@@ -1,11 +1,22 @@
 class Solution:
-    def isPalindrome(self, s):
-        pass
+    def arraySum(self, nums):
+        return nums
 
 
 if __name__ == "__main__":
     import sys
-    s = sys.stdin.read().strip()
 
-    result = Solution().isPalindrome(s)
-    print(str(result).lower())
+    data = list(map(int, sys.stdin.read().split()))
+    idx = 0
+    t = data[idx]
+    idx += 1
+
+    sol = Solution()
+
+    for _ in range(t):
+        n = data[idx]
+        idx += 1
+        nums = data[idx:idx + n]
+        idx += n
+
+        print(sol.arraySum(nums))

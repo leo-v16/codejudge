@@ -17,13 +17,19 @@ export default function AdminPage() {
   const [problemData, setProblemData] = useState({
     title: "",
     description: "",
-    input: "",
-    output: "",
     template: "",
-    runner_code: "",
     difficulty: "Medium",
     points: 10,
-    contest_id: 0
+    contest_id: 0,
+    // Function-Based Fields
+    signature_json: "",
+    test_cases_json: ""
+  });
+
+  const [signature, setSignature] = useState({
+      functionName: "twoSum",
+      parameters: [{name: "nums", type: "List[int]"}, {name: "target", type: "int"}],
+      returnType: "List[int]"
   });
 
   // Contest Form State
@@ -96,16 +102,27 @@ export default function AdminPage() {
 
   const handleEditProblem = (problem: any) => {
       setEditingProblemId(problem.id);
+      
+      if (problem.signature_json) {
+          try {
+              const sig = JSON.parse(problem.signature_json);
+              setSignature({
+                  functionName: sig.function_name,
+                  parameters: sig.parameters || [],
+                  returnType: sig.return_type
+              });
+          } catch (e) { console.error("Failed to parse signature", e); }
+      }
+
       setProblemData({
           title: problem.title,
           description: problem.description,
-          input: problem.input,
-          output: problem.output,
           template: problem.template,
-          runner_code: problem.runner_code || "",
           difficulty: problem.difficulty,
           points: problem.points || 10,
-          contest_id: problem.contest_id
+          contest_id: problem.contest_id,
+          signature_json: problem.signature_json || "",
+          test_cases_json: problem.test_cases_json || ""
       });
   };
 
@@ -114,11 +131,22 @@ export default function AdminPage() {
     try {
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
       const method = editingProblemId ? "PUT" : "POST";
+      
+      const finalSignatureJson = JSON.stringify({
+          language: "python",
+          class_name: "Solution",
+          function_name: signature.functionName,
+          parameters: signature.parameters,
+          return_type: signature.returnType
+      });
+
       const body = {
         ...problemData,
         contest_id: Number(problemData.contest_id),
         points: Number(problemData.points),
-        id: editingProblemId || undefined
+        id: editingProblemId || undefined,
+        signature_json: finalSignatureJson,
+        test_cases_json: problemData.test_cases_json
       };
       
       const res = await fetch(`${backendUrl}/problem`, {
@@ -132,13 +160,12 @@ export default function AdminPage() {
         setProblemData({
           title: "",
           description: "",
-          input: "",
-          output: "",
           template: "",
-          runner_code: "",
           difficulty: "Medium",
           points: 10,
-          contest_id: 0
+          contest_id: 0,
+          signature_json: "",
+          test_cases_json: ""
         });
         setEditingProblemId(null);
         fetchProblems();
@@ -165,13 +192,12 @@ export default function AdminPage() {
                 setProblemData({
                     title: "",
                     description: "",
-                    input: "",
-                    output: "",
                     template: "",
-                    runner_code: "",
                     difficulty: "Medium",
                     points: 10,
-                    contest_id: 0
+                    contest_id: 0,
+                    signature_json: "",
+                    test_cases_json: ""
                 });
             }
             fetchProblems();
@@ -508,12 +534,12 @@ export default function AdminPage() {
                                     setProblemData({
                                         title: "",
                                         description: "",
-                                        input: "",
-                                        output: "",
                                         template: "",
-                                        runner_code: "",
                                         difficulty: "Medium",
-                                        contest_id: 0
+                                        points: 10,
+                                        contest_id: 0,
+                                        signature_json: "",
+                                        test_cases_json: ""
                                     });
                                 }}
                             >
@@ -557,6 +583,101 @@ export default function AdminPage() {
                             </div>
                         </div>
 
+                        <div className="p-4 bg-gray-900/30 border border-violet-900/30 rounded-lg space-y-4">
+                            <h3 className="text-violet-400 text-sm font-bold uppercase">Function Signature</h3>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-sm text-gray-400">Function Name</label>
+                                    <Input 
+                                        value={signature.functionName}
+                                        onChange={(e) => {
+                                            const newName = e.target.value;
+                                            setSignature({...signature, functionName: newName});
+                                            // Auto-generate template
+                                            const params = signature.parameters.map(p => `${p.name}: ${p.type}`).join(", ");
+                                            const newTemplate = `class Solution:\n    def ${newName}(self, ${params}) -> ${signature.returnType}:\n        pass`;
+                                            setProblemData(prev => ({...prev, template: newTemplate}));
+                                        }}
+                                        placeholder="twoSum"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm text-gray-400">Return Type (Python Hint)</label>
+                                    <Input 
+                                        value={signature.returnType}
+                                        onChange={(e) => {
+                                            const newType = e.target.value;
+                                            setSignature({...signature, returnType: newType});
+                                            const params = signature.parameters.map(p => `${p.name}: ${p.type}`).join(", ");
+                                            const newTemplate = `class Solution:\n    def ${signature.functionName}(self, ${params}) -> ${newType}:\n        pass`;
+                                            setProblemData(prev => ({...prev, template: newTemplate}));
+                                        }}
+                                        placeholder="List[int]"
+                                    />
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm text-gray-400 flex justify-between">
+                                    <span>Parameters</span>
+                                    <button 
+                                        type="button" 
+                                        onClick={() => {
+                                            const newParams = [...signature.parameters, {name: "", type: ""}];
+                                            setSignature({...signature, parameters: newParams});
+                                        }}
+                                        className="text-cyan-400 text-xs hover:underline"
+                                    >
+                                        + Add Parameter
+                                    </button>
+                                </label>
+                                {signature.parameters.map((param, idx) => (
+                                    <div key={idx} className="flex gap-2">
+                                        <Input 
+                                            placeholder="Param Name (e.g. nums)" 
+                                            value={param.name} 
+                                            onChange={(e) => {
+                                                const newParams = [...signature.parameters];
+                                                newParams[idx].name = e.target.value;
+                                                setSignature({...signature, parameters: newParams});
+                                                
+                                                const paramStr = newParams.map(p => `${p.name}: ${p.type}`).join(", ");
+                                                const newTemplate = `class Solution:\n    def ${signature.functionName}(self, ${paramStr}) -> ${signature.returnType}:\n        pass`;
+                                                setProblemData(prev => ({...prev, template: newTemplate}));
+                                            }}
+                                        />
+                                        <Input 
+                                            placeholder="Type (e.g. List[int])" 
+                                            value={param.type} 
+                                            onChange={(e) => {
+                                                const newParams = [...signature.parameters];
+                                                newParams[idx].type = e.target.value;
+                                                setSignature({...signature, parameters: newParams});
+
+                                                const paramStr = newParams.map(p => `${p.name}: ${p.type}`).join(", ");
+                                                const newTemplate = `class Solution:\n    def ${signature.functionName}(self, ${paramStr}) -> ${signature.returnType}:\n        pass`;
+                                                setProblemData(prev => ({...prev, template: newTemplate}));
+                                            }}
+                                        />
+                                        <Button 
+                                            type="button" 
+                                            variant="ghost" 
+                                            size="sm"
+                                            onClick={() => {
+                                                const newParams = signature.parameters.filter((_, i) => i !== idx);
+                                                setSignature({...signature, parameters: newParams});
+
+                                                const paramStr = newParams.map(p => `${p.name}: ${p.type}`).join(", ");
+                                                const newTemplate = `class Solution:\n    def ${signature.functionName}(self, ${paramStr}) -> ${signature.returnType}:\n        pass`;
+                                                setProblemData(prev => ({...prev, template: newTemplate}));
+                                            }}
+                                        >
+                                            <Trash2 className="w-4 h-4 text-red-400" />
+                                        </Button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
                         <div className="grid grid-cols-1 gap-6">
                             <div className="space-y-2">
                                 <label className="text-sm text-gray-400">Assign to Contest (Optional)</label>
@@ -584,27 +705,16 @@ export default function AdminPage() {
                         />
                         </div>
 
-                        <div className="grid grid-cols-2 gap-6">
                         <div className="space-y-2">
-                            <label className="text-sm text-gray-400">Test Case Input</label>
+                            <label className="text-sm text-gray-400">Test Cases JSON</label>
                             <textarea 
-                            className="w-full h-24 bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-3 text-gray-100 font-mono text-sm focus:border-cyan-500 focus:outline-none"
-                            value={problemData.input}
-                            onChange={(e) => setProblemData({...problemData, input: e.target.value})}
-                            placeholder="Input data..."
+                            className="w-full h-48 bg-gray-900/50 border border-violet-700/50 rounded-lg px-4 py-3 text-gray-100 font-mono text-sm focus:border-violet-500 focus:outline-none"
+                            value={problemData.test_cases_json}
+                            onChange={(e) => setProblemData({...problemData, test_cases_json: e.target.value})}
+                            placeholder='[{"input": {"nums": [2,7,11,15], "target": 9}, "output": [0,1]}]'
                             required
                             />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-sm text-gray-400">Expected Output</label>
-                            <textarea 
-                            className="w-full h-24 bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-3 text-gray-100 font-mono text-sm focus:border-cyan-500 focus:outline-none"
-                            value={problemData.output}
-                            onChange={(e) => setProblemData({...problemData, output: e.target.value})}
-                            placeholder="Expected result..."
-                            required
-                            />
-                        </div>
+                            <p className="text-xs text-gray-500">Must be a valid JSON array of objects with "input" (object matching params) and "output" fields.</p>
                         </div>
                         
                         <div className="space-y-2">
@@ -616,17 +726,6 @@ export default function AdminPage() {
                             placeholder="class Solution:..."
                             required
                             />
-                        </div>
-
-                        <div className="space-y-2">
-                            <label className="text-sm text-gray-400">Hidden Runner Code (Appended to submission)</label>
-                            <textarea 
-                            className="w-full h-32 bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-3 text-gray-100 font-mono text-sm focus:border-cyan-500 focus:outline-none"
-                            value={problemData.runner_code}
-                            onChange={(e) => setProblemData({...problemData, runner_code: e.target.value})}
-                            placeholder="if __name__ == '__main__': Solution().solve()..."
-                            />
-                            <p className="text-xs text-gray-500">This code is hidden from the user but runs after their code to handle input/output.</p>
                         </div>
 
                         <div className="pt-4 flex justify-end gap-3">

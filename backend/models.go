@@ -39,6 +39,10 @@ type Problem struct {
 	RunnerCode  string `json:"runner_code"` // Hidden code to feed input
 	Difficulty  string `json:"difficulty"`
 	Points      int    `json:"points"`
+	
+	// New LeetCode-style fields
+	SignatureJSON string `json:"signature_json"` // Stores ProblemSignature as JSON
+	TestCasesJSON string `json:"test_cases_json"` // Stores []TestCase as JSON
 }
 
 type Submission struct {
@@ -48,3 +52,15 @@ type Submission struct {
 	Status    string    `json:"status"`
 	CreatedAt time.Time `json:"created_at"`
 }
+
+type ProblemSignature struct {
+	Language     string `json:"language"`      // e.g., "python"
+	ClassName    string `json:"class_name"`    // e.g., "Solution"
+	FunctionName string `json:"function_name"` // e.g., "twoSum"
+	Parameters   []struct {
+		Name string `json:"name"` // e.g., "nums"
+		Type string `json:"type"` // e.g., "List[int]"
+	} `json:"parameters"`
+	ReturnType string `json:"return_type"` // e.g., "List[int]"
+}
+

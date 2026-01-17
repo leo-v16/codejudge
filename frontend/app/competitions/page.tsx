@@ -12,12 +12,14 @@ import { Trophy, Timer, Users, ArrowRight, Code } from "lucide-react";
 export default function CompetitionsPage() {
   const router = useRouter();
   const [isAdmin, setIsAdmin] = useState(false);
+  const [username, setUsername] = useState<string | null>(null);
   const [contests, setContests] = useState<any[]>([]);
   const [problems, setProblems] = useState<any[]>([]);
   
   useEffect(() => {
     const user = localStorage.getItem("codejudge_user");
     setIsAdmin(user === "admin");
+    setUsername(user);
     
     fetchContests();
     fetchProblems();
@@ -69,8 +71,8 @@ export default function CompetitionsPage() {
     <div className="min-h-screen bg-[#030712] p-8">
       <header className="flex justify-between items-center mb-12 max-w-7xl mx-auto">
         <div>
-          <h1 className="text-3xl font-bold text-white neon-text">Dashboard</h1>
-          <p className="text-gray-400">Welcome back, Runner.</p>
+          <h1 className="text-3xl font-bold text-white neon-text">Contests</h1>
+          <p className="text-gray-400">Welcome back, {username || "Runner"}.</p>
         </div>
         <div className="flex gap-4">
             {isAdmin && (

@@ -87,6 +87,29 @@ export default function ContestPage() {
     fetchContest();
     checkRegistration();
     fetchLeaderboard();
+
+    // Live Leaderboard Updates
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
+    const eventSource = new EventSource(`${backendUrl}/contest/${id}/leaderboard/stream`);
+    
+    eventSource.onmessage = (event) => {
+        try {
+            // Check if data is double encoded (since we sent it as a JSON string inside SSE)
+            let data = JSON.parse(event.data);
+            if (typeof data === "string") {
+                data = JSON.parse(data);
+            }
+            if (Array.isArray(data)) {
+                setLeaderboard(data);
+            }
+        } catch (e) {
+            console.error("Failed to parse leaderboard update", e);
+        }
+    };
+
+    return () => {
+        eventSource.close();
+    };
   }, [id]);
 
   const handleRegister = async () => {
@@ -98,14 +121,16 @@ export default function ContestPage() {
     let submissionInfo = extraInfo;
 
     // Validate dynamic fields
-    if (registrationFields.length > 0) {
-        for (const field of registrationFields) {
-            if (field.required && !userResponses[field.name]?.trim()) {
-                alert(`Please provide: ${field.name}`);
-                return;
+    if (isDynamicConfig) {
+        if (registrationFields.length > 0) {
+            for (const field of registrationFields) {
+                if (field.required && !userResponses[field.name]?.trim()) {
+                    alert(`Please provide: ${field.name}`);
+                    return;
+                }
             }
+            submissionInfo = JSON.stringify(userResponses);
         }
-        submissionInfo = JSON.stringify(userResponses);
     } else if (contest.registration_config && !extraInfo.trim() && !submissionInfo) {
         // Fallback validation for old string config
          alert(`Please provide: ${contest.registration_config}`);
@@ -170,7 +195,7 @@ export default function ContestPage() {
                 <p className="text-gray-400 max-w-2xl">{contest.description}</p>
             </div>
             <div className="flex flex-col items-end gap-2">
-                {!registered && status === 'upcoming' && (
+                {!registered && (status === 'upcoming' || status === 'active') && (
                     <>
                         {isDynamicConfig ? (
                             registrationFields.length > 0 && (

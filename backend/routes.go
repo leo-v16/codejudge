@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"io"
 	"net/http"
 	"strconv"
 	"time"
@@ -27,9 +29,117 @@ func handleRun(c *gin.Context) {
 	var run Run
 	if err := c.ShouldBindJSON(&run); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
 	}
+
+	problemID, err := strconv.Atoi(run.Problem)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid problem ID"})
+		return
+	}
+
+	problem, err := GetProblemByID(uint(problemID))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Problem not found"})
+		return
+	}
+
+	// === NEW: Function-Based Execution ===
+	if problem.SignatureJSON != "" {
+		var signature ProblemSignature
+		if err := json.Unmarshal([]byte(problem.SignatureJSON), &signature); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid problem signature"})
+			return
+		}
+		
+		var testCases []map[string]interface{}
+		if err := json.Unmarshal([]byte(problem.TestCasesJSON), &testCases); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid test cases"})
+			return
+		}
+
+		results, err := ExecuteFunctionRun(run.Username, run.Solution, signature, testCases)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		// Validation & Scoring
+		status := "Passed"
+		var firstFailedResult *RunResult
+		var firstFailedInput interface{}
+		var firstFailedExpected interface{}
+		failedIndex := -1
+		passedCount := 0
+		totalCount := len(testCases)
+
+		for i, res := range results {
+			expected := testCases[i]["output"]
+			
+			resBytes, _ := json.Marshal(res.Result)
+			expBytes, _ := json.Marshal(expected)
+			
+			passed := res.Status == "ok" && string(resBytes) == string(expBytes)
+
+			if passed {
+				passedCount++
+			} else if firstFailedResult == nil {
+				status = "Failed"
+				firstFailedResult = &results[i]
+				firstFailedInput = testCases[i]["input"]
+				firstFailedExpected = expected
+				failedIndex = i + 1 // 1-based index
+			}
+		}
+
+		if status == "Passed" {
+			CreateSubmission(Submission{
+				UserID:    run.Username,
+				ProblemID: uint(problemID),
+				Status:    "Passed",
+				CreatedAt: time.Now(),
+			})
+			if problem.ContestID != 0 {
+				leaderboard, _ := GetContestLeaderboard(problem.ContestID)
+				Broker.Broadcast(problem.ContestID, leaderboard)
+			}
+		}
+
+		// Format response
+		var output, expectedStr, inputStr string
+		if firstFailedResult != nil {
+			outputBytes, _ := json.Marshal(firstFailedResult.Result)
+			if firstFailedResult.Status != "ok" {
+				output = firstFailedResult.Error // Show error if runtime error
+			} else {
+				output = string(outputBytes)
+			}
+			
+			expBytes, _ := json.Marshal(firstFailedExpected)
+			expectedStr = string(expBytes)
+			
+			inBytes, _ := json.Marshal(firstFailedInput)
+			inputStr = string(inBytes)
+		}
+
+		c.JSON(http.StatusAccepted, gin.H{
+			"username":        run.Username,
+			"message":         "", 
+			"output":          output,
+			"status":          status,
+			"expected_output": expectedStr,
+			"actual_output":   output,
+			"test_case_input": inputStr,
+			"passed_count":    passedCount,
+			"total_count":     totalCount,
+			"failed_index":    failedIndex,
+		})
+		return
+	}
+
+	// === LEGACY: IO-Based Execution ===
 	// problem is now the ID string
-	err := hydrateRunDirectory(run.Username, run.Problem, run.Solution)
+	err = hydrateRunDirectory(run.Username, run.Problem, run.Solution)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -56,13 +166,20 @@ func handleRun(c *gin.Context) {
 	if err == nil && passed {
 		status = "Passed"
 		// Record submission
-		problemID, _ := strconv.Atoi(run.Problem) // run.Problem is ID string
+		// problemID, _ := strconv.Atoi(run.Problem) // run.Problem is ID string
 		CreateSubmission(Submission{
 			UserID:    run.Username,
 			ProblemID: uint(problemID),
 			Status:    "Passed",
 			CreatedAt: time.Now(),
 		})
+
+		// Broadcast Leaderboard Update
+		problem, _ := GetProblemByID(uint(problemID))
+		if problem.ContestID != 0 {
+			leaderboard, _ := GetContestLeaderboard(problem.ContestID)
+			Broker.Broadcast(problem.ContestID, leaderboard)
+		}
 	}
 
 	c.JSON(http.StatusAccepted, gin.H{
@@ -85,21 +202,51 @@ func handleGetLeaderboard(c *gin.Context) {
 	c.JSON(http.StatusOK, leaderboard)
 }
 
-// func handleGetContestLeaderboard(c *gin.Context) {
-// 	contestIDStr := c.Param("id")
-// 	contestID, err := strconv.Atoi(contestIDStr)
-// 	if err != nil {
-// 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid contest ID"})
-// 		return
-// 	}
+func handleGetContestLeaderboard(c *gin.Context) {
+	contestIDStr := c.Param("id")
+	contestID, err := strconv.Atoi(contestIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid contest ID"})
+		return
+	}
 
-// 	leaderboard, err := GetContestLeaderboard(uint(contestID))
-// 	if err != nil {
-// 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-// 		return
-// 	}
-// 	c.JSON(http.StatusOK, leaderboard)
-// }
+	leaderboard, err := GetContestLeaderboard(uint(contestID))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, leaderboard)
+}
+
+func handleLeaderboardStream(c *gin.Context) {
+	contestIDStr := c.Param("id")
+	contestID, err := strconv.Atoi(contestIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid contest ID"})
+		return
+	}
+
+	c.Header("Content-Type", "text/event-stream")
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Connection", "keep-alive")
+	c.Header("Transfer-Encoding", "chunked")
+
+	clientChan := Broker.Subscribe(uint(contestID))
+	defer Broker.Unsubscribe(uint(contestID), clientChan)
+
+	c.Stream(func(w io.Writer) bool {
+		select {
+		case msg, ok := <-clientChan:
+			if ok {
+				c.SSEvent("message", msg)
+				return true
+			}
+			return false
+		case <-c.Request.Context().Done():
+			return false
+		}
+	})
+}
 
 func handleGetProblemLeaderboard(c *gin.Context) {
 	problemIDStr := c.Param("id")
@@ -109,12 +256,30 @@ func handleGetProblemLeaderboard(c *gin.Context) {
 		return
 	}
 
-	leaderboard, err := GetProblemLeaderboard(uint(problemID))
+	problem, err := GetProblemByID(uint(problemID))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusNotFound, gin.H{"error": "Problem not found"})
 		return
 	}
-	c.JSON(http.StatusOK, leaderboard)
+
+	if problem.ContestID != 0 {
+		// Return the contest leaderboard
+		leaderboard, err := GetContestLeaderboard(problem.ContestID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, leaderboard)
+	} else {
+		// Fallback for practice problems (global leaderboard or specific)
+		// For now, let's keep the old behavior for practice problems or return empty
+		leaderboard, err := GetProblemLeaderboard(uint(problemID))
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, leaderboard)
+	}
 }
 
 func handleCreateUser(c *gin.Context) {

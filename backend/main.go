@@ -10,6 +10,7 @@ import (
 
 func main() {
 	InitDatabase()
+	InitBroker()
 	router := gin.Default()
 
 	router.Use(cors.New(cors.Config{
@@ -42,7 +43,8 @@ func main() {
 	router.GET("/contest/status", handleGetRegistrationStatus)
 	router.GET("/contest/:id/registrations", handleGetContestRegistrations)
 	router.GET("/leaderboard", handleGetLeaderboard)
-	// router.GET("/contest/:id/leaderboard", handleGetContestLeaderboard)
+	router.GET("/contest/:id/leaderboard", handleGetContestLeaderboard)
+	router.GET("/contest/:id/leaderboard/stream", handleLeaderboardStream)
 	router.GET("/problem/:id/leaderboard", handleGetProblemLeaderboard)
 
 	router.Run(":8080")
